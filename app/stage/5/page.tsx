@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, useHasHydrated } from '@/store/useProjectStore'
 import Stepper from '@/components/Stepper'
 import SceneCard from '@/components/SceneCard'
 import SceneErrorCard from '@/components/SceneErrorCard'
 import GenerationProgress from '@/components/GenerationProgress'
-import CopyButton from '@/components/CopyButton'
 import { saveToHistory } from '@/lib/localStorage'
 import { SceneMotionPrompt } from '@/types'
 import { SceneContext, fetchMotionPrompt, planItemFor } from '@/lib/sceneApi'
@@ -16,6 +15,7 @@ import StageActionPanel from '@/components/StageActionPanel'
 
 export default function Stage5() {
   const router = useRouter()
+  const hasHydrated = useHasHydrated()
   const {
     topic,
     selected_idea,
@@ -41,8 +41,14 @@ export default function Stage5() {
   const isGeneratingRef = useRef(false)
   const hasSavedHistory = useRef(false)
 
-  // Redirect if prerequisite state is missing
+  // Scroll reset
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  // Redirect if prerequisite state is missing after hydration
+  useEffect(() => {
+    if (!hasHydrated) return
     if (!image_prompts || image_prompts.length === 0 || !theme) {
       router.replace('/stage/4')
       return
@@ -54,12 +60,22 @@ export default function Stage5() {
       startStreamingMotions()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasHydrated, image_prompts, theme])
 
-  // Sync local motions to store
+  // Restore existing motion prompts from store if hydrated
   useEffect(() => {
-    setMotionPrompts(motions)
-  }, [motions, setMotionPrompts])
+    if (hasHydrated && motion_prompts.length > 0 && motions.length === 0 && !hasStarted.current) {
+      setMotions(motion_prompts)
+      setStatus('done')
+    }
+  }, [hasHydrated, motion_prompts, motions.length])
+
+  // Sync local motions to store once hydrated
+  useEffect(() => {
+    if (hasHydrated && (motions.length > 0 || hasStarted.current)) {
+      setMotionPrompts(motions)
+    }
+  }, [hasHydrated, motions, setMotionPrompts])
 
   // Save to history once all motions are ready
   useEffect(() => {

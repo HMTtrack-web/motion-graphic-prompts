@@ -11,7 +11,7 @@ export default function Stage1() {
   const router = useRouter()
   const {
     topic, setTopic,
-    selected_idea, setSelectedIdea,
+    setSelectedIdea,
     setScript, setCurrentStage,
     setLoading,
   } = useProjectStore()

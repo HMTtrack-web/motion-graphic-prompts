@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, useHasHydrated } from '@/store/useProjectStore'
 import Stepper from '@/components/Stepper'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
@@ -20,6 +20,7 @@ function getWordCountColor(count: number): string {
 
 export default function Stage2() {
   const router = useRouter()
+  const hasHydrated = useHasHydrated()
   const {
     topic, selected_idea, script, setScript,
     setCurrentStage, setLoading,
@@ -32,8 +33,14 @@ export default function Stage2() {
 
   const wordCount = localScript.trim() === '' ? 0 : localScript.trim().split(/\s+/).filter(Boolean).length
 
-  // Redirect if no idea selected
+  // Scroll reset
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  // Redirect if no idea selected after hydration
+  useEffect(() => {
+    if (!hasHydrated) return
     if (!selected_idea) {
       router.replace('/stage/1')
       return
@@ -47,12 +54,14 @@ export default function Stage2() {
       setLocalScript(script)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasHydrated, selected_idea])
 
-  // Save script to store on change
+  // Save script to store on change once hydrated
   useEffect(() => {
-    setScript(localScript)
-  }, [localScript, setScript])
+    if (hasHydrated && localScript) {
+      setScript(localScript)
+    }
+  }, [hasHydrated, localScript, setScript])
 
   const generateScript = useCallback(async () => {
     setGenerating(true)

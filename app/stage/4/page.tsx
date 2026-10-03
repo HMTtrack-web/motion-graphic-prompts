@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, useHasHydrated } from '@/store/useProjectStore'
 import Stepper from '@/components/Stepper'
 import SceneCard from '@/components/SceneCard'
 import SceneErrorCard from '@/components/SceneErrorCard'
 import GenerationProgress from '@/components/GenerationProgress'
-import CopyButton from '@/components/CopyButton'
 import { SceneImagePrompt, ScenePlanItem } from '@/types'
 import { SceneContext, fetchImagePrompt, fetchScenePlan, planItemFor } from '@/lib/sceneApi'
 import SceneSkeletonCard from '@/components/SceneSkeletonCard'
@@ -15,6 +14,7 @@ import StageActionPanel from '@/components/StageActionPanel'
 
 export default function Stage4() {
   const router = useRouter()
+  const hasHydrated = useHasHydrated()
   const {
     topic,
     selected_idea,
@@ -39,8 +39,14 @@ export default function Stage4() {
   const hasStarted = useRef(false)
   const isGeneratingRef = useRef(false)
 
-  // Redirect if prerequisite state is missing
+  // Scroll reset
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  // Redirect if prerequisite state is missing after hydration
+  useEffect(() => {
+    if (!hasHydrated) return
     if (!script || !theme) {
       router.replace('/stage/3')
       return
@@ -52,19 +58,35 @@ export default function Stage4() {
       startStreamingPipeline()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasHydrated, script, theme])
 
-  // Sync scenes to Zustand store whenever scenes change
+  // Restore existing prompts/plan from store if hydrated
   useEffect(() => {
-    setImagePrompts(scenes)
-  }, [scenes, setImagePrompts])
+    if (hasHydrated && image_prompts.length > 0 && scenes.length === 0 && !hasStarted.current) {
+      setScenes(image_prompts)
+      setStatus('done')
+    }
+  }, [hasHydrated, image_prompts, scenes.length])
 
-  // Sync scene plan to store whenever local plan changes
   useEffect(() => {
-    if (scenePlanList.length > 0) {
+    if (hasHydrated && scene_plan.length > 0 && scenePlanList.length === 0) {
+      setScenePlanList(scene_plan)
+    }
+  }, [hasHydrated, scene_plan, scenePlanList.length])
+
+  // Sync scenes to Zustand store whenever scenes change once hydrated
+  useEffect(() => {
+    if (hasHydrated && (scenes.length > 0 || hasStarted.current)) {
+      setImagePrompts(scenes)
+    }
+  }, [hasHydrated, scenes, setImagePrompts])
+
+  // Sync scene plan to store whenever local plan changes once hydrated
+  useEffect(() => {
+    if (hasHydrated && scenePlanList.length > 0) {
       setScenePlan(scenePlanList)
     }
-  }, [scenePlanList, setScenePlan])
+  }, [hasHydrated, scenePlanList, setScenePlan])
 
   const startStreamingPipeline = async () => {
     if (isGeneratingRef.current || !theme) return

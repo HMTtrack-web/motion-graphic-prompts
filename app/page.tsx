@@ -73,6 +73,7 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     // Load history
     setHistory(getHistory().slice(0, 5))
 

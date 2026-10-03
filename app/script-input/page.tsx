@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, useHasHydrated } from '@/store/useProjectStore'
 
 const MIN_WORDS = 20
 
@@ -85,8 +85,21 @@ export default function ScriptInputPage() {
     setMotionPrompts,
   } = useProjectStore()
 
-  // Prefill when returning here via Back from Stage 3
+  const hasHydrated = useHasHydrated()
+
+  // Scroll reset to top on stage mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  // Prefill when returning here via Back from Stage 3 or from session rehydration
   const [localScript, setLocalScript] = useState(isDirectScript ? script : '')
+
+  useEffect(() => {
+    if (hasHydrated && isDirectScript && script && !localScript) {
+      setLocalScript(script)
+    }
+  }, [hasHydrated, isDirectScript, script, localScript])
 
   const wordCount = countWords(localScript)
   const seconds = Math.round(wordCount / 2.7)

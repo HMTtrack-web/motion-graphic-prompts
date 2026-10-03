@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useProjectStore, useHasHydrated } from '@/store/useProjectStore'
 import Stepper from '@/components/Stepper'
 import ThemeCard from '@/components/ThemeCard'
 import { PREDEFINED_THEMES, Theme } from '@/types'
 
 export default function Stage3() {
   const router = useRouter()
+  const hasHydrated = useHasHydrated()
   const { topic, selected_idea, script, theme, setTheme, setCurrentStage, setImagePrompts, isDirectScript } = useProjectStore()
 
   const backPath = isDirectScript ? '/script-input' : '/stage/2'
@@ -23,7 +24,25 @@ export default function Stage3() {
   const [customAccent, setCustomAccent] = useState(theme?.name === 'Custom' ? theme.accent_color : '#C62828')
   const [customDescription, setCustomDescription] = useState(theme?.custom_description || '')
 
+  // Scroll reset
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  // Sync theme from store upon hydration if not yet set
+  useEffect(() => {
+    if (hasHydrated && theme?.name && !selectedThemeName) {
+      setSelectedThemeName(theme.name)
+      if (theme.name === 'Custom') {
+        setCustomBg(theme.bg_color)
+        setCustomAccent(theme.accent_color)
+        setCustomDescription(theme.custom_description || '')
+      }
+    }
+  }, [hasHydrated, theme, selectedThemeName])
+
+  useEffect(() => {
+    if (!hasHydrated) return
     if (!script) {
       router.replace(backPath)
       return
@@ -43,7 +62,7 @@ export default function Stage3() {
       .catch(() => {})
       .finally(() => setLoadingRecommend(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasHydrated, script])
 
   const handleSelectTheme = (name: string) => {
     setSelectedThemeName(name)
